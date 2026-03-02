@@ -1,0 +1,27 @@
+# ==============================================================================
+# STM32CubeIDE / Eclipse Project .gitignore
+# ==============================================================================
+
+# Build output
+Debug/
+Release/
+
+# Eclipse / STM32CubeIDE workspace metadata
+.metadata/
+.settings/
+
+# IDE launch configs
+*.launch
+
+# Compiled objects
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+
+# OS generated files
+.DS_Store
+Thumbs.db
