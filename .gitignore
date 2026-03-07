@@ -3,12 +3,12 @@
 # ==============================================================================
 
 # Build output
-Debug/
-Release/
+**/Debug/
+**/Release/
 
 # Eclipse / STM32CubeIDE workspace metadata
 .metadata/
-.settings/
+**/.settings/
 
 # IDE launch configs
 *.launch
@@ -24,7 +24,7 @@ Release/
 
 # STM32CubeIDE specific
 *.cfg
-STM32F446RETx_FLASH.ld.bak
+*.ld.bak
 
 # STM32CubeMX backup
 *.ioc.bak
@@ -35,4 +35,4 @@ Thumbs.db
 desktop.ini
 
 # Datasheets (large PDF files)
-Docs/Datasheets/
+**/Docs/Datasheets/
