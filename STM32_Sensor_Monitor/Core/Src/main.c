@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "EcuAbs_I2c.h"
+#include "Svc_Bme280.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -104,7 +105,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-
+  EcuAbs_I2c_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -328,28 +329,18 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-GPIO_PinState test_GPIO;
-uint8_t chip_id = 0U;
-HAL_StatusTypeDef result;
+Svc_Bme280_StatusType bme280Status;
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
 
+  /* BME280 Init test */
+  bme280Status = Svc_Bme280_Init();
+
+  /* Infinite loop */
   for(;;)
   {
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
-	test_GPIO = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
-    osDelay(500);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
-    test_GPIO = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
-    osDelay(500);
-
-	  /* BME280 I2C address: 0x76 (SDO=GND) or 0x77 (SDO=VDD), left-shifted for HAL */
-	  result = HAL_I2C_Mem_Read(&hi2c1, (0x77U << 1U), 0xD0U, I2C_MEMADD_SIZE_8BIT,
-	                            &chip_id, 1U, 100U);
-
-	  /* result == HAL_OK && chip_id == 0x60 -> success */
+    osDelay(1000);
   }
   /* USER CODE END 5 */
 }
