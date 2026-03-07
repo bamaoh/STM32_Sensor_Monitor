@@ -40,6 +40,15 @@ typedef enum
     SVC_BME280_COMM_ERROR   = 0x02U,   /*!< I2C communication error           */
     SVC_BME280_CHIP_ID_ERR  = 0x03U    /*!< Chip ID mismatch                  */
 } Svc_Bme280_StatusType;
+
+/** @breif Svc_Bme280 measurement data type definition */
+typedef struct
+{
+    int32_t  temperature;    /*!< Temperature in 0.01 degree C  */
+    uint32_t pressure;       /*!< Pressure in Pa                */
+    uint32_t humidity;       /*!< Humidity in 0.01 %RH          */
+} Svc_Bme280_DataType;
+
 /*
 ************************************************************************************************************************
 *                                                    Exported variables
@@ -56,5 +65,11 @@ typedef enum
  * @retval  Svc_Bme280 status
  */
 Svc_Bme280_StatusType Svc_Bme280_Init(void);
+
+/**
+ * @brief   Read measurement data from BME280 sensor and store the temperature, pressure, humidity data into pData
+ * @retval  Svc_Bme280 status
+ */
+Svc_Bme280_StatusType Svc_Bme280_ReadMeasurement(Svc_Bme280_DataType *pData);
 
 #endif /* SVC_BME280_H */

@@ -50,7 +50,10 @@
 #define SVC_BME280_OSRS_H           (0x01U)    /*!< Humidity oversampling x1              */
 #define SVC_BME280_MODE_NORMAL      (0x03U)    /*!< Normal mode                           */
 #define SVC_BME280_FILTER_OFF       (0x00U)    /*!< IIR filter off                        */
-#define SVC_BME280_STANDBY_1000MS   (0x05U)    /*!< Standby time 1000ms                  */
+#define SVC_BME280_STANDBY_1000MS   (0x05U)    /*!< Standby time 1000ms                   */
+
+#define SVC_BME280_REG_DATA         (0xF7U)    /*!< Measurement start register            */
+#define SVC_BME280_DATA_LEN         (8U)       /*!< Measurement data length               */
 /*
 ************************************************************************************************************************
 *                                                         Typedefs
@@ -91,6 +94,7 @@ typedef struct
 */
 
 static Svc_Bme280_CalibType calibData;    /*!< Stored calibration parameters  */
+static int32_t tFine;                     /*!< Fine temperature value shared across compensation  */
 /*
 ************************************************************************************************************************
 *                                              Private function prototypes
@@ -114,6 +118,27 @@ static Svc_Bme280_StatusType Svc_Bme280_ReadCalibData(void);
  * @retval  Svc_Bme280 status
  */
 static Svc_Bme280_StatusType Svc_Bme280_Configure(void);
+
+/**
+ * @brief   Compensate raw temperature value to physical value.
+ * @param   adcT  Raw temperature ADC value (20-bit).
+ * @retval  Temperature in 0.01 degree C
+ */
+static int32_t Svc_Bme280_CompensateTemp(int32_t adcT);
+
+/**
+ * @brief   Compensate raw pressure value to physical value.
+ * @param   adcP  Raw pressure ADC value (20-bit).
+ * @retval  Pressure in Pa
+ */
+static uint32_t Svc_Bme280_CompensatePress(int32_t adcP);
+
+/**
+ * @brief   Compensate raw humidity value to physical value.
+ * @param   adcH  Raw humidity ADC value (16-bit).
+ * @retval  Humidity in 0.01 %RH
+ */
+static uint32_t Svc_Bme280_CompensateHum(int32_t adcH);
 /*
 ************************************************************************************************************************
 *                                                    Public functions
@@ -176,6 +201,49 @@ Svc_Bme280_StatusType Svc_Bme280_Init(void)
     if (retVal == SVC_BME280_OK)
     {
         retVal = Svc_Bme280_Configure();
+    }
+
+    return retVal;
+}
+
+/**
+ * @brief   Reads measurement data from sensor registers.
+ * @retval  Svc_Bme280 status
+ */
+Svc_Bme280_StatusType Svc_Bme280_ReadMeasurement(Svc_Bme280_DataType *pData)
+{
+    Svc_Bme280_StatusType retVal = SVC_BME280_OK;
+    EcuAbs_I2c_StatusType i2cStatus;
+    uint8_t dataBuf[SVC_BME280_DATA_LEN];
+    int32_t adcP;
+    int32_t adcT;
+    int32_t adcH;
+
+    i2cStatus = EcuAbs_I2c_ReadReg(SVC_BME280_DEV_ADDR,
+                                    SVC_BME280_REG_DATA,
+                                    dataBuf,
+                                    SVC_BME280_DATA_LEN);
+
+    if (i2cStatus != ECUABS_I2C_OK)
+    {
+        retVal = SVC_BME280_COMM_ERROR;
+    }
+
+    if (retVal == SVC_BME280_OK)
+    {
+        /* Parse 20-bit raw pressure */
+        adcP = (int32_t)((uint32_t)dataBuf[0] << 12U | (uint32_t)dataBuf[1] << 4U | (uint32_t)(dataBuf[2] >> 4U));
+        /* Parse 20-bit raw temperature */
+        adcT = (int32_t)((uint32_t)dataBuf[3] << 12U | (uint32_t)dataBuf[4] << 4U | (uint32_t)(dataBuf[5] >> 4U));
+        /* Parse 16-bit raw humidity */
+        adcH = (int32_t)((uint32_t)dataBuf[6] << 8U | (uint32_t)dataBuf[7]);
+
+        /* Compensate: temperature must be first (tFine is needed by pressure/humidity) */
+        pData->temperature = Svc_Bme280_CompensateTemp(adcT);
+        /* Pressure: Q24.8 format (datasheet 4.2.3) -> right shift 8 to get Pa */
+        pData->pressure    = Svc_Bme280_CompensatePress(adcP) >> 8U;
+        /* Humidity: Q22.10 format (datasheet 4.2.3) -> *100 / 1024 to get 0.01 %RH */
+        pData->humidity    = (Svc_Bme280_CompensateHum(adcH) * 100U) >> 10U;
     }
 
     return retVal;
@@ -342,4 +410,82 @@ static Svc_Bme280_StatusType Svc_Bme280_Configure(void)
     }
 
     return retVal;
+}
+
+/**
+ * @brief   Compensate raw temperature value to physical value.
+ *          Formula from BME280 datasheet Section 4.2.3.
+ * @param   adcT  Raw temperature ADC value (20-bit).
+ * @retval  Temperature in 0.01 degree C
+ */
+static int32_t Svc_Bme280_CompensateTemp(int32_t adcT)
+{
+    int32_t var1;
+    int32_t var2;
+    int32_t temperature;
+
+    var1 = ((((adcT >> 3) - ((int32_t)calibData.digT1 << 1))) * ((int32_t)calibData.digT2)) >> 11;
+    var2 = (((((adcT >> 4) - ((int32_t)calibData.digT1)) * ((adcT >> 4) - ((int32_t)calibData.digT1))) >> 12)
+            * ((int32_t)calibData.digT3)) >> 14;
+
+    tFine = var1 + var2;
+    temperature = (tFine * 5 + 128) >> 8;
+
+    return temperature;
+}
+
+/**
+ * @brief   Compensate raw pressure value to physical value.
+ *          Formula from BME280 datasheet Section 4.2.3.
+ * @param   adcP  Raw pressure ADC value (20-bit).
+ * @retval  Pressure in Pa
+ */
+static uint32_t Svc_Bme280_CompensatePress(int32_t adcP)
+{
+    int64_t var1;
+    int64_t var2;
+    int64_t p;
+    uint32_t pressure = 0U;
+
+    var1 = ((int64_t)tFine) - 128000;
+    var2 = var1 * var1 * (int64_t)calibData.digP6;
+    var2 = var2 + ((var1 * (int64_t)calibData.digP5) << 17);
+    var2 = var2 + (((int64_t)calibData.digP4) << 35);
+    var1 = ((var1 * var1 * (int64_t)calibData.digP3) >> 8) + ((var1 * (int64_t)calibData.digP2) << 12);
+    var1 = (((((int64_t)1) << 47) + var1)) * ((int64_t)calibData.digP1) >> 33;
+
+    if (var1 != 0)
+    {
+        p = 1048576 - (int64_t)adcP;
+        p = (((p << 31) - var2) * 3125) / var1;
+        var1 = (((int64_t)calibData.digP9) * (p >> 13) * (p >> 13)) >> 25;
+        var2 = (((int64_t)calibData.digP8) * p) >> 19;
+
+        p = ((p + var1 + var2) >> 8) + (((int64_t)calibData.digP7) << 4);
+        pressure = (uint32_t)p;
+    }
+
+    return pressure;
+}
+
+/**
+ * @brief   Compensate raw humidity value to physical value.
+ *          Formula from BME280 datasheet Section 4.2.3.
+ * @param   adcH  Raw humidity ADC value (16-bit).
+ * @retval  Humidity in 0.01 %RH
+ */
+static uint32_t Svc_Bme280_CompensateHum(int32_t adcH)
+{
+    int32_t vX1U32r;
+
+    vX1U32r = (tFine - ((int32_t)76800));
+    vX1U32r = (((((adcH << 14) - (((int32_t)calibData.digH4) << 20) - (((int32_t)calibData.digH5) * vX1U32r))
+                + ((int32_t)16384)) >> 15) * (((((((vX1U32r * ((int32_t)calibData.digH6)) >> 10)
+                * (((vX1U32r * ((int32_t)calibData.digH3)) >> 11) + ((int32_t)32768))) >> 10)
+                + ((int32_t)2097152)) * ((int32_t)calibData.digH2) + 8192) >> 14));
+    vX1U32r = (vX1U32r - (((((vX1U32r >> 15) * (vX1U32r >> 15)) >> 7) * ((int32_t)calibData.digH1)) >> 4));
+    vX1U32r = (vX1U32r < 0) ? 0 : vX1U32r;
+    vX1U32r = (vX1U32r > 419430400) ? 419430400 : vX1U32r;
+
+    return (uint32_t)(vX1U32r >> 12);
 }
