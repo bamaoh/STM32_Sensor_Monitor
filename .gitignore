@@ -22,6 +22,17 @@ Release/
 *.map
 *.list
 
+# STM32CubeIDE specific
+*.cfg
+STM32F446RETx_FLASH.ld.bak
+
+# STM32CubeMX backup
+*.ioc.bak
+
 # OS generated files
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Datasheets (large PDF files)
+Docs/Datasheets/
