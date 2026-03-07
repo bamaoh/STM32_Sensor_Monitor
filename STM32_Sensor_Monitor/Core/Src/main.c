@@ -290,13 +290,19 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
+GPIO_PinState test_GPIO;
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+	test_GPIO = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
+    osDelay(500);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
+    test_GPIO = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
+    osDelay(500);
   }
   /* USER CODE END 5 */
 }
