@@ -38,7 +38,8 @@ typedef enum
     SVC_BME280_OK           = 0x00U,   /*!< No error                          */
     SVC_BME280_ERROR        = 0x01U,   /*!< General error                     */
     SVC_BME280_COMM_ERROR   = 0x02U,   /*!< I2C communication error           */
-    SVC_BME280_CHIP_ID_ERR  = 0x03U    /*!< Chip ID mismatch                  */
+    SVC_BME280_CHIP_ID_ERR  = 0x03U,   /*!< Chip ID mismatch                  */
+    SVC_BME280_BUSY         = 0x04U    /*!< Sensor is measuring               */
 } Svc_Bme280_StatusType;
 
 /** @breif Svc_Bme280 measurement data type definition */

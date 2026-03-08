@@ -32,6 +32,7 @@
 /* Register addresses */
 #define SVC_BME280_REG_CHIP_ID      (0xD0U)    /*!< Chip ID register address              */
 #define SVC_BME280_REG_RESET        (0xE0U)    /*!< Soft reset register address           */
+#define SVC_BME280_REG_STATUS       (0xF3U)    /*!< Status register                       */
 #define SVC_BME280_REG_CTRL_HUM     (0xF2U)    /*!< Humidity control register             */
 #define SVC_BME280_REG_CTRL_MEAS    (0xF4U)    /*!< Measurement control register          */
 #define SVC_BME280_REG_CONFIG       (0xF5U)    /*!< Configuration register                */
@@ -55,6 +56,9 @@
 
 #define SVC_BME280_REG_DATA         (0xF7U)    /*!< Measurement start register            */
 #define SVC_BME280_DATA_LEN         (8U)       /*!< Measurement data length               */
+
+/* Status register bit mask */
+#define SVC_BME280_STATUS_MEASURING (0x08U)    /*!< Bit[3]: measuring in progress         */
 
 /* Recovery configuration */
 #define SVC_BME280_RETRY_MAX        (3U)       /*!< Max retry count before escalation     */
@@ -244,18 +248,42 @@ Svc_Bme280_StatusType Svc_Bme280_ReadMeasurement(Svc_Bme280_DataType *pData)
     Svc_Bme280_StatusType retVal = SVC_BME280_OK;
     EcuAbs_I2c_StatusType i2cStatus;
     uint8_t dataBuf[SVC_BME280_DATA_LEN];
+    uint8_t status;
     int32_t adcP;
     int32_t adcT;
     int32_t adcH;
 
+    /* Check if sensor is currently measuring (datasheet Section 5.4.4, status register bit[3]) */
     i2cStatus = EcuAbs_I2c_ReadReg(SVC_BME280_DEV_ADDR,
-                                    SVC_BME280_REG_DATA,
-                                    dataBuf,
-                                    SVC_BME280_DATA_LEN);
+                                    SVC_BME280_REG_STATUS,
+                                    &status,
+                                    1U);
 
     if (i2cStatus != ECUABS_I2C_OK)
     {
         retVal = Svc_Bme280_RecoverI2c();
+    }
+    else if ((status & SVC_BME280_STATUS_MEASURING) != 0U)
+    {
+        retVal = SVC_BME280_BUSY;
+    }
+    else
+    {
+        /* Sensor is idle, safe to read */
+    }
+
+    /* Read measurement data */
+    if (retVal == SVC_BME280_OK)
+    {
+        i2cStatus = EcuAbs_I2c_ReadReg(SVC_BME280_DEV_ADDR,
+                                        SVC_BME280_REG_DATA,
+                                        dataBuf,
+                                        SVC_BME280_DATA_LEN);
+
+        if (i2cStatus != ECUABS_I2C_OK)
+        {
+            retVal = Svc_Bme280_RecoverI2c();
+        }
     }
 
     if (retVal == SVC_BME280_OK)
