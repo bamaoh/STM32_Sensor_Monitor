@@ -170,6 +170,51 @@ EcuAbs_I2c_StatusType EcuAbs_I2c_WriteReg(uint8_t devAddr,
 
     return retVal;
 }
+/**
+ * @brief   Deinitialize the I2C peripheral.
+ * @retval  EcuAbs I2C status
+ */
+EcuAbs_I2c_StatusType EcuAbs_I2c_DeInit(void)
+{
+    EcuAbs_I2c_StatusType retVal = ECUABS_I2C_OK;
+
+    if (pI2cHandle != NULL)
+    {
+        if (HAL_I2C_DeInit(pI2cHandle) != HAL_OK)
+        {
+            retVal = ECUABS_I2C_ERROR;
+        }
+    }
+    else
+    {
+        retVal = ECUABS_I2C_ERROR;
+    }
+
+    return retVal;
+}
+
+/**
+ * @brief   Reinitialize the I2C peripheral.
+ * @retval  EcuAbs I2C status
+ */
+EcuAbs_I2c_StatusType EcuAbs_I2c_ReInit(void)
+{
+    EcuAbs_I2c_StatusType retVal = ECUABS_I2C_OK;
+
+    if (pI2cHandle != NULL)
+    {
+        if (HAL_I2C_Init(pI2cHandle) != HAL_OK)
+        {
+            retVal = ECUABS_I2C_ERROR;
+        }
+    }
+    else
+    {
+        retVal = ECUABS_I2C_ERROR;
+    }
+
+    return retVal;
+}
 /*
 ************************************************************************************************************************
 *                                                   Private functions
