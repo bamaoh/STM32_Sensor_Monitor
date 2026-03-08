@@ -330,6 +330,7 @@ static void MX_GPIO_Init(void)
   */
 /* USER CODE END Header_StartDefaultTask */
 Svc_Bme280_StatusType bme280Status;
+Svc_Bme280_DataType sensorData;
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
@@ -340,6 +341,7 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+    bme280Status = Svc_Bme280_ReadMeasurement(&sensorData);
     osDelay(1000);
   }
   /* USER CODE END 5 */
