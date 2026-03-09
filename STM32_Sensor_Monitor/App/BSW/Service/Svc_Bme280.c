@@ -20,6 +20,7 @@
 #include "Svc_Bme280.h"
 #include "EcuAbs_I2c.h"
 #include "EcuAbs_Gpio.h"
+#include "RteApp_Bme280.h"
 #include "main.h"
 /*
 ************************************************************************************************************************
@@ -301,6 +302,11 @@ Svc_Bme280_StatusType Svc_Bme280_ReadMeasurement(Svc_Bme280_DataType *pData)
         pData->pressure    = Svc_Bme280_CompensatePress(adcP) >> 8U;
         /* Humidity: Q22.10 format (datasheet 4.2.3) -> *100 / 1024 to get 0.01 %RH */
         pData->humidity    = (Svc_Bme280_CompensateHum(adcH) * 100U) >> 10U;
+
+        /* Write compensated data to RTE buffer */
+        (void)RteApp_Bme280_Write_Temperature(pData->temperature);
+        (void)RteApp_Bme280_Write_Pressure(pData->pressure);
+        (void)RteApp_Bme280_Write_Humidity(pData->humidity);
     }
 
     return retVal;
