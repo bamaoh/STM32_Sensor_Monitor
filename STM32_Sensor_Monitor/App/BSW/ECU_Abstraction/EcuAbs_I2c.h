@@ -92,4 +92,16 @@ EcuAbs_I2c_StatusType EcuAbs_I2c_WriteReg(uint8_t devAddr,
                                            const uint8_t *pData,
                                            uint16_t length);
 
+/**
+ * @brief   Deinitialize the I2C peripheral.
+ * @retval  EcuAbs I2C status
+ */
+EcuAbs_I2c_StatusType EcuAbs_I2c_DeInit(void);
+
+/**
+ * @brief   Reinitialize the I2C peripheral.
+ * @retval  EcuAbs I2C status
+ */
+EcuAbs_I2c_StatusType EcuAbs_I2c_ReInit(void);
+
 #endif /* ECUABS_I2C_H */
