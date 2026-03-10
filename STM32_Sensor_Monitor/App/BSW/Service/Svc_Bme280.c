@@ -19,6 +19,7 @@
 */
 #include "Svc_Bme280.h"
 #include "EcuAbs_I2c.h"
+#include "EcuAbs_Gpio.h"
 #include "main.h"
 /*
 ************************************************************************************************************************
@@ -54,6 +55,10 @@
 
 #define SVC_BME280_REG_DATA         (0xF7U)    /*!< Measurement start register            */
 #define SVC_BME280_DATA_LEN         (8U)       /*!< Measurement data length               */
+
+/* Recovery configuration */
+#define SVC_BME280_RETRY_MAX        (3U)       /*!< Max retry count before escalation     */
+#define SVC_BME280_SCL_TOGGLE_COUNT (9U)       /*!< SCL toggles for bus recovery          */
 /*
 ************************************************************************************************************************
 *                                                         Typedefs
@@ -139,6 +144,15 @@ static uint32_t Svc_Bme280_CompensatePress(int32_t adcP);
  * @retval  Humidity in 0.01 %RH
  */
 static uint32_t Svc_Bme280_CompensateHum(int32_t adcH);
+
+/**
+ * @brief   Attempt I2C recovery with escalating strategy.
+ *          Level 1: Retry communication
+ *          Level 2: I2C ReInit → Retry
+ *          Level 3: Bus Recovery (SCL toggle) → ReInit → Retry
+ * @retval  Svc_Bme280 status
+ */
+static Svc_Bme280_StatusType Svc_Bme280_RecoverI2c(void);
 /*
 ************************************************************************************************************************
 *                                                    Public functions
@@ -160,7 +174,7 @@ Svc_Bme280_StatusType Svc_Bme280_Init(void)
 
     if (i2cStatus != ECUABS_I2C_OK)
     {
-        retVal = SVC_BME280_COMM_ERROR;
+        retVal = Svc_Bme280_RecoverI2c();
     }
 
     /* Read and verify Chip ID */
@@ -173,7 +187,7 @@ Svc_Bme280_StatusType Svc_Bme280_Init(void)
 
         if (i2cStatus != ECUABS_I2C_OK)
         {
-            retVal = SVC_BME280_COMM_ERROR;
+            retVal = Svc_Bme280_RecoverI2c();
         }
         else if (chipId != SVC_BME280_CHIP_ID_VAL)
         {
@@ -189,18 +203,33 @@ Svc_Bme280_StatusType Svc_Bme280_Init(void)
     if (retVal == SVC_BME280_OK)
     {
         retVal = Svc_Bme280_SoftReset();
+
+        if (retVal == SVC_BME280_COMM_ERROR)
+        {
+            retVal = Svc_Bme280_RecoverI2c();
+        }
     }
 
     /* Read calibration data from sensor */
     if (retVal == SVC_BME280_OK)
     {
         retVal = Svc_Bme280_ReadCalibData();
+
+        if (retVal == SVC_BME280_COMM_ERROR)
+        {
+            retVal = Svc_Bme280_RecoverI2c();
+        }
     }
 
     /* Configure oversampling and operating mode */
     if (retVal == SVC_BME280_OK)
     {
         retVal = Svc_Bme280_Configure();
+
+        if (retVal == SVC_BME280_COMM_ERROR)
+        {
+            retVal = Svc_Bme280_RecoverI2c();
+        }
     }
 
     return retVal;
@@ -226,7 +255,7 @@ Svc_Bme280_StatusType Svc_Bme280_ReadMeasurement(Svc_Bme280_DataType *pData)
 
     if (i2cStatus != ECUABS_I2C_OK)
     {
-        retVal = SVC_BME280_COMM_ERROR;
+        retVal = Svc_Bme280_RecoverI2c();
     }
 
     if (retVal == SVC_BME280_OK)
@@ -488,4 +517,61 @@ static uint32_t Svc_Bme280_CompensateHum(int32_t adcH)
     vX1U32r = (vX1U32r > 419430400) ? 419430400 : vX1U32r;
 
     return (uint32_t)(vX1U32r >> 12);
+}
+
+/**
+ * @brief   Attempt I2C recovery with escalating strategy.
+ *          Level 1: Retry communication
+ *          Level 2: I2C ReInit → Retry
+ *          Level 3: Bus Recovery (SCL toggle) → ReInit → Retry
+ * @retval  Svc_Bme280 status
+ */
+static Svc_Bme280_StatusType Svc_Bme280_RecoverI2c(void)
+{
+    Svc_Bme280_StatusType retVal = SVC_BME280_COMM_ERROR;
+    EcuAbs_I2c_StatusType i2cStatus;
+    uint8_t retry;
+
+    /* Level 1: Retry communication */
+    for (retry = 0U; retry < SVC_BME280_RETRY_MAX; retry++)
+    {
+        i2cStatus = EcuAbs_I2c_IsDeviceReady(SVC_BME280_DEV_ADDR);
+
+        if (i2cStatus == ECUABS_I2C_OK)
+        {
+            retVal = SVC_BME280_OK;
+            break;
+        }
+    }
+
+    /* Level 2: I2C ReInit → Retry */
+    if (retVal != SVC_BME280_OK)
+    {
+        (void)EcuAbs_I2c_DeInit();
+        (void)EcuAbs_I2c_ReInit();
+
+        i2cStatus = EcuAbs_I2c_IsDeviceReady(SVC_BME280_DEV_ADDR);
+
+        if (i2cStatus == ECUABS_I2C_OK)
+        {
+            retVal = SVC_BME280_OK;
+        }
+    }
+
+    /* Level 3: Bus Recovery (SCL toggle) → ReInit → Retry */
+    if (retVal != SVC_BME280_OK)
+    {
+        (void)EcuAbs_I2c_DeInit();
+        (void)EcuAbs_Gpio_ToggleSclPin(SVC_BME280_SCL_TOGGLE_COUNT);
+        (void)EcuAbs_I2c_ReInit();
+
+        i2cStatus = EcuAbs_I2c_IsDeviceReady(SVC_BME280_DEV_ADDR);
+
+        if (i2cStatus == ECUABS_I2C_OK)
+        {
+            retVal = SVC_BME280_OK;
+        }
+    }
+
+    return retVal;
 }
