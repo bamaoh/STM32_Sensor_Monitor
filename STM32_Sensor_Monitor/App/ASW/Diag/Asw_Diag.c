@@ -20,6 +20,7 @@
 ************************************************************************************************************************
 */
 #include "Asw_Diag.h"
+#include "RteApp_Bme280.h"
 #include "RteApp_Sensor.h"
 #include "RteApp_Diag.h"
 /*
@@ -87,12 +88,10 @@ static Asw_Diag_ItemType envDiag  = {ASW_DIAG_STATE_NORMAL, 0U};
 
 /**
  * @brief   Process sensor communication fault diagnosis with debouncing.
- * @param   tempDiag    Temperature diagnostic flag from RTE
- * @param   pressDiag   Pressure diagnostic flag from RTE
- * @param   humDiag     Humidity diagnostic flag from RTE
+ * @param   commStatus  Communication status from Service (0: OK, 1: Error)
  * @retval  None
  */
-static void Asw_Diag_ProcessCommFault(uint8_t tempDiag, uint8_t pressDiag, uint8_t humDiag);
+static void Asw_Diag_ProcessCommFault(uint8_t commStatus);
 
 /**
  * @brief   Process sensor data fault diagnosis with debouncing.
@@ -123,14 +122,21 @@ static void Asw_Diag_ProcessEnvWarning(int32_t temp, uint32_t press, uint32_t hu
  */
 void Asw_Diag_MainFunction(void)
 {
-    uint8_t tempDiag  = ASW_DIAG_FLAG_OK;
-    uint8_t pressDiag = ASW_DIAG_FLAG_OK;
-    uint8_t humDiag   = ASW_DIAG_FLAG_OK;
+    uint8_t commStatus  = 0U;
+    uint8_t tempDiag    = ASW_DIAG_FLAG_OK;
+    uint8_t pressDiag   = ASW_DIAG_FLAG_OK;
+    uint8_t humDiag     = ASW_DIAG_FLAG_OK;
     int32_t  tempValue  = 0;
     uint32_t pressValue = 0U;
     uint32_t humValue   = 0U;
+    uint8_t commResult  = ASW_DIAG_NO_FAULT;
+    uint8_t dataResult  = ASW_DIAG_NO_FAULT;
+    uint8_t envResult   = ASW_DIAG_NO_FAULT;
 
-    /* Read diagnostic flags from RTE */
+    /* Read communication status from Service RTE */
+    (void)RteApp_Bme280_Read_CommStatus(&commStatus);
+
+    /* Read diagnostic flags from Sensor RTE */
     (void)RteApp_Sensor_Read_TempDiag(&tempDiag);
     (void)RteApp_Sensor_Read_PressDiag(&pressDiag);
     (void)RteApp_Sensor_Read_HumDiag(&humDiag);
@@ -141,14 +147,19 @@ void Asw_Diag_MainFunction(void)
     (void)RteApp_Sensor_Read_Filtered_Humidity(&humValue);
 
     /* Process each diagnostic item */
-    Asw_Diag_ProcessCommFault(tempDiag, pressDiag, humDiag);
+    Asw_Diag_ProcessCommFault(commStatus);
     Asw_Diag_ProcessDataFault(tempDiag, pressDiag, humDiag);
     Asw_Diag_ProcessEnvWarning(tempValue, pressValue, humValue);
 
+    /* Evaluate diagnostic results */
+    commResult = (commDiag.state == ASW_DIAG_STATE_FAULT) ? ASW_DIAG_FAULT : ASW_DIAG_NO_FAULT;
+    dataResult = (dataDiag.state == ASW_DIAG_STATE_FAULT) ? ASW_DIAG_FAULT : ASW_DIAG_NO_FAULT;
+    envResult  = (envDiag.state == ASW_DIAG_STATE_WARNING) ? ASW_DIAG_WARNING : ASW_DIAG_NO_FAULT;
+
     /* Write diagnostic results to RTE */
-    (void)RteApp_Diag_Write_CommFault((commDiag.state == ASW_DIAG_STATE_FAULT) ? ASW_DIAG_FAULT : ASW_DIAG_NO_FAULT);
-    (void)RteApp_Diag_Write_DataFault((dataDiag.state == ASW_DIAG_STATE_FAULT) ? ASW_DIAG_FAULT : ASW_DIAG_NO_FAULT);
-    (void)RteApp_Diag_Write_EnvWarning((envDiag.state == ASW_DIAG_STATE_WARNING) ? ASW_DIAG_WARNING : ASW_DIAG_NO_FAULT);
+    (void)RteApp_Diag_Write_CommFault(commResult);
+    (void)RteApp_Diag_Write_DataFault(dataResult);
+    (void)RteApp_Diag_Write_EnvWarning(envResult);
 }
 /*
 ************************************************************************************************************************
@@ -158,19 +169,15 @@ void Asw_Diag_MainFunction(void)
 
 /**
  * @brief   Process sensor communication fault diagnosis with debouncing.
- * @param   tempDiag    Temperature diagnostic flag from RTE
- * @param   pressDiag   Pressure diagnostic flag from RTE
- * @param   humDiag     Humidity diagnostic flag from RTE
+ * @param   commStatus  Communication status from Service (0: OK, 1: Error)
  * @retval  None
  */
-static void Asw_Diag_ProcessCommFault(uint8_t tempDiag, uint8_t pressDiag, uint8_t humDiag)
+static void Asw_Diag_ProcessCommFault(uint8_t commStatus)
 {
     uint8_t faultDetected;
 
-    /* Communication fault if any channel has COMM_ERROR */
-    faultDetected = ((tempDiag == ASW_DIAG_FLAG_COMM_ERROR)
-                  || (pressDiag == ASW_DIAG_FLAG_COMM_ERROR)
-                  || (humDiag == ASW_DIAG_FLAG_COMM_ERROR)) ? 1U : 0U;
+    /* Communication fault if Service reports error */
+    faultDetected = (commStatus != 0U) ? 1U : 0U;
 
     switch (commDiag.state)
     {
