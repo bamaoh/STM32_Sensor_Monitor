@@ -76,7 +76,7 @@ typedef struct
 
 static Asw_Sensor_DataType       sensorData;          /*!< Validated sensor data           */
 static Asw_Sensor_DiagStatusType diagStatus;          /*!< Diagnostic flags                */
-static uint8_t                   isFirstCycle = 1U;   /*!< First cycle flag (skip filter)  */
+static uint8_t                   stabilizeCount = 3U; /*!< Remaining cycles before filter  */
 /*
 ************************************************************************************************************************
 *                                              Private function prototypes
@@ -148,10 +148,10 @@ void Asw_Sensor_MainFunction(void)
         diagStatus.humDiag = ASW_SENSOR_DIAG_COMM_ERROR;
     }
 
-    /* First cycle complete */
-    if (isFirstCycle == 1U)
+    /* Count down stabilization cycles */
+    if (stabilizeCount > 0U)
     {
-        isFirstCycle = 0U;
+        stabilizeCount--;
     }
 
     /* Write filtered data to RTE */
@@ -184,7 +184,7 @@ static void Asw_Sensor_ProcessTemp(int32_t rawValue)
     {
         diagStatus.tempDiag = ASW_SENSOR_DIAG_RANGE_ERROR;
     }
-    else if (isFirstCycle == 1U)
+    else if (stabilizeCount > 0U)
     {
         /* First cycle: accept value without rate check */
         sensorData.temperature = rawValue;
@@ -227,7 +227,7 @@ static void Asw_Sensor_ProcessPress(uint32_t rawValue)
     {
         diagStatus.pressDiag = ASW_SENSOR_DIAG_RANGE_ERROR;
     }
-    else if (isFirstCycle == 1U)
+    else if (stabilizeCount > 0U)
     {
         /* First cycle: accept value without rate check */
         sensorData.pressure = rawValue;
@@ -270,7 +270,7 @@ static void Asw_Sensor_ProcessHum(uint32_t rawValue)
     {
         diagStatus.humDiag = ASW_SENSOR_DIAG_RANGE_ERROR;
     }
-    else if (isFirstCycle == 1U)
+    else if (stabilizeCount > 0U)
     {
         /* First cycle: accept value without rate check */
         sensorData.humidity = rawValue;
