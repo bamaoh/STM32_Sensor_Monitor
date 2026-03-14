@@ -116,7 +116,53 @@ static void Asw_Sensor_ProcessHum(uint32_t rawValue);
  */
 void Asw_Sensor_MainFunction(void)
 {
+    int32_t  tempValue;
+    uint32_t pressValue;
+    uint32_t humValue;
 
+    /* Read measurement data from RTE */
+    if (RteApp_Bme280_Read_Temperature(&tempValue) == RTEAPP_OK)
+    {
+        Asw_Sensor_ProcessTemp(tempValue);
+    }
+    else
+    {
+        diagStatus.tempDiag = ASW_SENSOR_DIAG_COMM_ERROR;
+    }
+
+    if (RteApp_Bme280_Read_Pressure(&pressValue) == RTEAPP_OK)
+    {
+        Asw_Sensor_ProcessPress(pressValue);
+    }
+    else
+    {
+        diagStatus.pressDiag = ASW_SENSOR_DIAG_COMM_ERROR;
+    }
+
+    if (RteApp_Bme280_Read_Humidity(&humValue) == RTEAPP_OK)
+    {
+        Asw_Sensor_ProcessHum(humValue);
+    }
+    else
+    {
+        diagStatus.humDiag = ASW_SENSOR_DIAG_COMM_ERROR;
+    }
+
+    /* First cycle complete */
+    if (isFirstCycle == 1U)
+    {
+        isFirstCycle = 0U;
+    }
+
+    /* Write filtered data to RTE */
+    (void)RteApp_Sensor_Write_Filtered_Temperature(sensorData.temperature);
+    (void)RteApp_Sensor_Write_Filtered_Pressure(sensorData.pressure);
+    (void)RteApp_Sensor_Write_Filtered_Humidity(sensorData.humidity);
+
+    /* Write diagnostic flags to RTE */
+    (void)RteApp_Sensor_Write_TempDiag((uint8_t)diagStatus.tempDiag);
+    (void)RteApp_Sensor_Write_PressDiag((uint8_t)diagStatus.pressDiag);
+    (void)RteApp_Sensor_Write_HumDiag((uint8_t)diagStatus.humDiag);
 }
 /*
 ************************************************************************************************************************
