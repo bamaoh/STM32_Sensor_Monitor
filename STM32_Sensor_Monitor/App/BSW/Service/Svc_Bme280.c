@@ -309,6 +309,9 @@ Svc_Bme280_StatusType Svc_Bme280_ReadMeasurement(Svc_Bme280_DataType *pData)
         (void)RteApp_Bme280_Write_Humidity(pData->humidity);
     }
 
+    /* Write communication status to RTE (0: OK, 1: Error) */
+    (void)RteApp_Bme280_Write_CommStatus((retVal == SVC_BME280_COMM_ERROR) ? 1U : 0U);
+
     return retVal;
 }
 /*

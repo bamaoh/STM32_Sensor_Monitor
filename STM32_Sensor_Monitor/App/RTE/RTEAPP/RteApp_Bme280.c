@@ -38,6 +38,7 @@
 static int32_t  rteTemperature = 0;      /*!< Temperature buffer (0.01 degree C)  */
 static uint32_t rtePressure    = 0U;     /*!< Pressure buffer (Pa)                */
 static uint32_t rteHumidity    = 0U;     /*!< Humidity buffer (0.01 %RH)          */
+static uint8_t  rteCommStatus  = 0U;     /*!< Communication status (0:OK, 1:Error) */
 /*
 ************************************************************************************************************************
 *                                              Private function prototypes
@@ -143,6 +144,38 @@ RteApp_StatusType RteApp_Bme280_Read_Humidity(uint32_t *pValue)
     else
     {
         *pValue = rteHumidity;
+    }
+
+    return retVal;
+}
+/**
+ * @brief   Write BME280 communication status to RTE buffer.
+ * @param   status   0: OK, 1: Error
+ * @retval  RteApp status
+ */
+RteApp_StatusType RteApp_Bme280_Write_CommStatus(uint8_t status)
+{
+    rteCommStatus = status;
+
+    return RTEAPP_OK;
+}
+
+/**
+ * @brief   Read BME280 communication status from RTE buffer.
+ * @param   pStatus  Pointer to store communication status
+ * @retval  RteApp status
+ */
+RteApp_StatusType RteApp_Bme280_Read_CommStatus(uint8_t *pStatus)
+{
+    RteApp_StatusType retVal = RTEAPP_OK;
+
+    if (pStatus == NULL)
+    {
+        retVal = RTEAPP_ERROR;
+    }
+    else
+    {
+        *pStatus = rteCommStatus;
     }
 
     return retVal;
