@@ -67,6 +67,7 @@
 									<listOptionValue builtIn="false" value="../App/ASW/Sensor"/>
 									<listOptionValue builtIn="false" value="../App/ASW/Manage"/>
 									<listOptionValue builtIn="false" value="../App/RTE/RTEAPP"/>
+									<listOptionValue builtIn="false" value="../APP/ASW/Diag"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.706047028" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
