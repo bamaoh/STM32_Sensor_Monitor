@@ -90,4 +90,20 @@ RteApp_StatusType RteApp_Bme280_Read_Pressure(uint32_t *pValue);
  */
 RteApp_StatusType RteApp_Bme280_Read_Humidity(uint32_t *pValue);
 
+/* Communication status (Service → RTE → Diag) */
+
+/**
+ * @brief   Write BME280 communication status to RTE buffer.
+ * @param   status   0: OK, 1: Error
+ * @retval  RteApp status
+ */
+RteApp_StatusType RteApp_Bme280_Write_CommStatus(uint8_t status);
+
+/**
+ * @brief   Read BME280 communication status from RTE buffer.
+ * @param   pStatus  Pointer to store communication status
+ * @retval  RteApp status
+ */
+RteApp_StatusType RteApp_Bme280_Read_CommStatus(uint8_t *pStatus);
+
 #endif /* RTEAPP_BME280_H */
