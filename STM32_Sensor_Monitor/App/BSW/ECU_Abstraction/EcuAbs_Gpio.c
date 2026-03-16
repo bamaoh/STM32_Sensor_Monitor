@@ -28,6 +28,8 @@
 #define ECUABS_GPIO_SCL_PORT    (GPIOB)         /*!< I2C1 SCL port (PB8)       */
 #define ECUABS_GPIO_SCL_PIN     (GPIO_PIN_8)    /*!< I2C1 SCL pin              */
 #define ECUABS_GPIO_TOGGLE_DELAY_US (5U)        /*!< Half-period delay for SCL toggle  */
+#define ECUABS_GPIO_LED_PORT    (LD2_GPIO_Port) /*!< LD2 port (PA5)            */
+#define ECUABS_GPIO_LED_PIN     (LD2_Pin)       /*!< LD2 pin                   */
 /*
 ************************************************************************************************************************
 *                                                         Typedefs
@@ -89,6 +91,32 @@ EcuAbs_Gpio_StatusType EcuAbs_Gpio_ToggleSclPin(uint8_t toggleCount)
     HAL_GPIO_Init(ECUABS_GPIO_SCL_PORT, &gpioInit);
 
     return retVal;
+}
+/**
+ * @brief   Turn on the status LED (LD2).
+ * @retval  None
+ */
+void EcuAbs_Gpio_SetLed(void)
+{
+    HAL_GPIO_WritePin(ECUABS_GPIO_LED_PORT, ECUABS_GPIO_LED_PIN, GPIO_PIN_SET);
+}
+
+/**
+ * @brief   Turn off the status LED (LD2).
+ * @retval  None
+ */
+void EcuAbs_Gpio_ClearLed(void)
+{
+    HAL_GPIO_WritePin(ECUABS_GPIO_LED_PORT, ECUABS_GPIO_LED_PIN, GPIO_PIN_RESET);
+}
+
+/**
+ * @brief   Toggle the status LED (LD2).
+ * @retval  None
+ */
+void EcuAbs_Gpio_ToggleLed(void)
+{
+    HAL_GPIO_TogglePin(ECUABS_GPIO_LED_PORT, ECUABS_GPIO_LED_PIN);
 }
 /*
 ************************************************************************************************************************

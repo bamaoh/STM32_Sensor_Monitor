@@ -56,4 +56,22 @@ typedef enum
  */
 EcuAbs_Gpio_StatusType EcuAbs_Gpio_ToggleSclPin(uint8_t toggleCount);
 
+/**
+ * @brief   Turn on the status LED (LD2).
+ * @retval  None
+ */
+void EcuAbs_Gpio_SetLed(void);
+
+/**
+ * @brief   Turn off the status LED (LD2).
+ * @retval  None
+ */
+void EcuAbs_Gpio_ClearLed(void);
+
+/**
+ * @brief   Toggle the status LED (LD2).
+ * @retval  None
+ */
+void EcuAbs_Gpio_ToggleLed(void);
+
 #endif /* ECUABS_GPIO_H */
