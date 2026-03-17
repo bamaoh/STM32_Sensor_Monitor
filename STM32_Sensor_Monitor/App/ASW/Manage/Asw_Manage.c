@@ -19,7 +19,7 @@
 */
 #include "Asw_Manage.h"
 #include "RteApp_Diag.h"
-#include "EcuAbs_Gpio.h"
+#include "Svc_Led.h"
 /*
 ************************************************************************************************************************
 *                                                   Defines and macros
@@ -71,18 +71,15 @@ void Asw_Manage_MainFunction(void)
     /* LED control: FAULT > WARNING > NORMAL */
     if ((commFault == ASW_MANAGE_FAULT) || (dataFault == ASW_MANAGE_FAULT))
     {
-        /* FAULT: LED OFF */
-        EcuAbs_Gpio_ClearLed();
+        Svc_Led_SetMode(SVC_LED_MODE_OFF);
     }
     else if (envWarning == ASW_MANAGE_WARNING)
     {
-        /* WARNING: LED blink (toggle each cycle) */
-        EcuAbs_Gpio_ToggleLed();
+        Svc_Led_SetMode(SVC_LED_MODE_BLINK);
     }
     else
     {
-        /* NORMAL: LED ON */
-        EcuAbs_Gpio_SetLed();
+        Svc_Led_SetMode(SVC_LED_MODE_ON);
     }
 }
 /*
