@@ -1,19 +1,19 @@
 /*
 ************************************************************************************************************************
 *
-* Filename        : EcuAbs_Gpio.h
+* Filename        : Svc_Led.h
 * Project         : STM32_Sensor_Monitor
-* Created         : 2026/03/26
-* Description     : ECU Abstraction Layer - GPIO Interface.
-*                   Provides hardware-independent GPIO control interface.
-*                   Pin mapping is encapsulated within this module.
+* Created         : 2026/03/27
+* Description     : LED Service Module Interface.
+*                   Provides mode-based LED control (ON, OFF, BLINK).
+*                   Blink timing is managed internally by MainFunction.
 * Version         : 0.0.1
 * Author          : Seongmin Oh
 *
 ************************************************************************************************************************
 */
-#ifndef ECUABS_GPIO_H
-#define ECUABS_GPIO_H
+#ifndef SVC_LED_H
+#define SVC_LED_H
 /*
 ************************************************************************************************************************
 *                                                  Include header files
@@ -31,12 +31,13 @@
 ************************************************************************************************************************
 */
 
-/** @brief EcuAbs GPIO operation status definition */
+/** @brief LED operating mode definition */
 typedef enum
 {
-    ECUABS_GPIO_OK      = 0x00U,   /*!< No error                          */
-    ECUABS_GPIO_ERROR   = 0x01U    /*!< Operation failed                  */
-} EcuAbs_Gpio_StatusType;
+    SVC_LED_MODE_OFF     = 0x00U,   /*!< LED off (steady)      */
+    SVC_LED_MODE_ON      = 0x01U,   /*!< LED on (steady)       */
+    SVC_LED_MODE_BLINK   = 0x02U    /*!< LED blinking          */
+} Svc_Led_ModeType;
 /*
 ************************************************************************************************************************
 *                                                    Exported variables
@@ -49,29 +50,18 @@ typedef enum
 */
 
 /**
- * @brief   Toggle I2C SCL line to recover bus hang.
- *          Internally manages SCL pin configuration (GPIO mode switch).
- * @param   toggleCount  Number of SCL clock toggles.
- * @retval  EcuAbs GPIO status
- */
-EcuAbs_Gpio_StatusType EcuAbs_Gpio_ToggleSclPin(uint8_t toggleCount);
-
-/**
- * @brief   Turn on the status LED (LD2).
+ * @brief   Set LED operating mode.
+ * @param   mode   SVC_LED_MODE_OFF, SVC_LED_MODE_ON, or SVC_LED_MODE_BLINK
  * @retval  None
  */
-void EcuAbs_Gpio_SetLed(void);
+void Svc_Led_SetMode(Svc_Led_ModeType mode);
 
 /**
- * @brief   Turn off the status LED (LD2).
+ * @brief   Periodic LED processing.
+ *          Executes LED action based on current mode.
+ *          Must be called periodically for blink to work.
  * @retval  None
  */
-void EcuAbs_Gpio_ClearLed(void);
+void Svc_Led_MainFunction(void);
 
-/**
- * @brief   Toggle the status LED (LD2).
- * @retval  None
- */
-void EcuAbs_Gpio_ToggleLed(void);
-
-#endif /* ECUABS_GPIO_H */
+#endif /* SVC_LED_H */

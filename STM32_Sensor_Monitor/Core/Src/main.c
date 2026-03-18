@@ -24,8 +24,10 @@
 /* USER CODE BEGIN Includes */
 #include "EcuAbs_I2c.h"
 #include "Svc_Bme280.h"
+#include "Svc_Led.h"
 #include "Asw_Sensor.h"
 #include "Asw_Diag.h"
+#include "Asw_Manage.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -346,6 +348,8 @@ void StartDefaultTask(void *argument)
     bme280Status = Svc_Bme280_ReadMeasurement(&sensorData);
     Asw_Sensor_MainFunction();
     Asw_Diag_MainFunction();
+    Asw_Manage_MainFunction();
+    Svc_Led_MainFunction();
     osDelay(1000);
   }
   /* USER CODE END 5 */
