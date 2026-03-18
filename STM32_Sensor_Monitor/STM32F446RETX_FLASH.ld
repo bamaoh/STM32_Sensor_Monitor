@@ -42,10 +42,14 @@ _Min_Heap_Size = 0x200; /* required amount of heap */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
 /* Memories definition */
+/* FLASH: Sector 0-5 (256KB) for application                        */
+/* NVM:   Sector 6 (128KB) + Sector 7 (128KB) reserved for NVM data */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 512K
+  FLASH    (rx)    : ORIGIN = 0x08000000,  LENGTH = 256K
+  NVM_MAIN (r)    : ORIGIN = 0x08040000,  LENGTH = 128K
+  NVM_BACKUP (r)  : ORIGIN = 0x08060000,  LENGTH = 128K
 }
 
 /* Sections */
