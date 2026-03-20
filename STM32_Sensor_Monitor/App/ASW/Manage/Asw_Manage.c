@@ -5,9 +5,10 @@
 * Project         : STM32_Sensor_Monitor
 * Created         : 2026/03/27
 * Description     : ASW Manage Module Implementation.
-*                   Reads diagnostic results from RTE and controls status LED.
-*                   Priority: FAULT (LED OFF) > WARNING (LED blink) > NORMAL (LED ON).
-* Version         : 0.0.1
+*                   Reads diagnostic results from RTE, controls status LED,
+*                   and manages NVM diagnostic data persistence.
+*                   NVM is updated only on fault/warning state transitions.
+* Version         : 0.0.2
 * Author          : Seongmin Oh
 *
 ************************************************************************************************************************
@@ -20,6 +21,7 @@
 #include "Asw_Manage.h"
 #include "RteApp_Diag.h"
 #include "Svc_Led.h"
+#include "Svc_Nvm.h"
 /*
 ************************************************************************************************************************
 *                                                   Defines and macros
@@ -40,11 +42,28 @@
 *                                                    Private variables
 ************************************************************************************************************************
 */
+
+static uint8_t prevCommFault  = ASW_MANAGE_NO_FAULT;
+static uint8_t prevDataFault  = ASW_MANAGE_NO_FAULT;
+static uint8_t prevEnvWarning = ASW_MANAGE_NO_FAULT;
+static Svc_Nvm_DiagDataType nvmData;
+static uint8_t nvmLoaded = 0U;
 /*
 ************************************************************************************************************************
 *                                              Private function prototypes
 ************************************************************************************************************************
 */
+
+/**
+ * @brief   Update NVM on diagnostic state transition.
+ *          Stores fault type with cycle marker and increments count.
+ *          Only writes to Flash when a new fault/warning transition occurs.
+ * @param   commFault   Current CommFault result
+ * @param   dataFault   Current DataFault result
+ * @param   envWarning  Current EnvWarning result
+ * @retval  None
+ */
+static void Asw_Manage_UpdateNvm(uint8_t commFault, uint8_t dataFault, uint8_t envWarning);
 /*
 ************************************************************************************************************************
 *                                                    Public functions
@@ -53,8 +72,8 @@
 
 /**
  * @brief   Periodic manage processing.
- *          Reads diagnostic results from RTE and controls status LED.
- *          Priority: FAULT (LED OFF) > WARNING (LED blink) > NORMAL (LED ON).
+ *          Reads diagnostic results from RTE, controls status LED,
+ *          and updates NVM on state transitions.
  * @retval  None
  */
 void Asw_Manage_MainFunction(void)
@@ -62,6 +81,13 @@ void Asw_Manage_MainFunction(void)
     uint8_t commFault  = ASW_MANAGE_NO_FAULT;
     uint8_t dataFault  = ASW_MANAGE_NO_FAULT;
     uint8_t envWarning = ASW_MANAGE_NO_FAULT;
+
+    /* Load NVM data on first call */
+    if (nvmLoaded == 0U)
+    {
+        (void)Svc_Nvm_ReadDiagData(&nvmData);
+        nvmLoaded = 1U;
+    }
 
     /* Read diagnostic results from RTE */
     (void)RteApp_Diag_Read_CommFault(&commFault);
@@ -81,9 +107,61 @@ void Asw_Manage_MainFunction(void)
     {
         Svc_Led_SetMode(SVC_LED_MODE_ON);
     }
+
+    /* Update NVM on state transitions */
+    Asw_Manage_UpdateNvm(commFault, dataFault, envWarning);
+
+    /* Track previous results */
+    prevCommFault  = commFault;
+    prevDataFault  = dataFault;
+    prevEnvWarning = envWarning;
 }
 /*
 ************************************************************************************************************************
 *                                                   Private functions
 ************************************************************************************************************************
 */
+
+/**
+ * @brief   Update NVM on diagnostic state transition.
+ *          On NORMAL -> FAULT/WARNING: store fault type with cycle marker, increment count, write NVM.
+ *          On repeated same fault (after recovery): only increment count, write NVM.
+ * @param   commFault   Current CommFault result
+ * @param   dataFault   Current DataFault result
+ * @param   envWarning  Current EnvWarning result
+ * @retval  None
+ */
+static void Asw_Manage_UpdateNvm(uint8_t commFault, uint8_t dataFault, uint8_t envWarning)
+{
+    uint8_t nvmChanged = 0U;
+
+    /* CommFault: NORMAL -> FAULT transition */
+    if ((commFault == ASW_MANAGE_FAULT) && (prevCommFault == ASW_MANAGE_NO_FAULT))
+    {
+        nvmData.commFault = nvmData.cycleMarker | commFault;
+        nvmData.commFaultCount++;
+        nvmChanged = 1U;
+    }
+
+    /* DataFault: NORMAL -> FAULT transition */
+    if ((dataFault == ASW_MANAGE_FAULT) && (prevDataFault == ASW_MANAGE_NO_FAULT))
+    {
+        nvmData.dataFault = nvmData.cycleMarker | dataFault;
+        nvmData.dataFaultCount++;
+        nvmChanged = 1U;
+    }
+
+    /* EnvWarning: NORMAL -> WARNING transition */
+    if ((envWarning == ASW_MANAGE_WARNING) && (prevEnvWarning == ASW_MANAGE_NO_FAULT))
+    {
+        nvmData.envWarning = nvmData.cycleMarker | envWarning;
+        nvmData.envWarningCount++;
+        nvmChanged = 1U;
+    }
+
+    /* Write to Flash only if something changed */
+    if (nvmChanged == 1U)
+    {
+        (void)Svc_Nvm_WriteDiagData(&nvmData);
+    }
+}
