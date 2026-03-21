@@ -35,6 +35,12 @@
 
 /* Power cycle marker */
 #define SVC_NVM_CYCLE_MASK      (0x80U)         /*!< Bit 7 for cycle marker    */
+
+/* Valid diagnostic result values (lower 7 bits) */
+#define SVC_NVM_FAULT_VALUE_MASK    (0x7FU)     /*!< Mask to extract result from cycle marker */
+#define SVC_NVM_VALID_NO_FAULT      (0U)
+#define SVC_NVM_VALID_FAULT         (1U)
+#define SVC_NVM_VALID_WARNING       (2U)
 /*
 ************************************************************************************************************************
 *                                                         Typedefs
@@ -61,6 +67,14 @@ static uint8_t nvmInitialized = 0U;        /*!< Init completed flag       */
  * @retval  NVM status (OK if valid marker found, EMPTY otherwise)
  */
 static Svc_Nvm_StatusType Svc_Nvm_ReadBlock(uint8_t sectorId, Svc_Nvm_DiagDataType *pData);
+
+/**
+ * @brief   Validate NVM diagnostic data integrity.
+ *          Checks that all fields contain expected values.
+ * @param   pData   Pointer to data to validate
+ * @retval  SVC_NVM_OK if valid, SVC_NVM_ERROR if corrupted
+ */
+static Svc_Nvm_StatusType Svc_Nvm_ValidateData(const Svc_Nvm_DiagDataType *pData);
 
 /**
  * @brief   Write data block with validity marker to NVM sector.
@@ -94,8 +108,18 @@ Svc_Nvm_StatusType Svc_Nvm_Init(void)
     }
     else if (retVal == SVC_NVM_OK)
     {
-        /* Toggle cycle marker for new power cycle */
-        nvmMirror.cycleMarker ^= SVC_NVM_CYCLE_MASK;
+        /* Validate stored data integrity */
+        if (Svc_Nvm_ValidateData(&nvmMirror) != SVC_NVM_OK)
+        {
+            /* Corrupted data: clear NVM and reset to defaults */
+            (void)EcuAbs_Flash_EraseSector(ECUABS_FLASH_NVM_MAIN);
+            (void)memset(&nvmMirror, 0, sizeof(nvmMirror));
+        }
+        else
+        {
+            /* Toggle cycle marker for new power cycle */
+            nvmMirror.cycleMarker ^= SVC_NVM_CYCLE_MASK;
+        }
     }
     else
     {
@@ -150,6 +174,30 @@ Svc_Nvm_StatusType Svc_Nvm_WriteDiagData(const Svc_Nvm_DiagDataType *pData)
 
         /* Erase main sector and write new data */
         retVal = Svc_Nvm_WriteBlock(ECUABS_FLASH_NVM_MAIN, pData);
+    }
+
+    return retVal;
+}
+
+/**
+ * @brief   Clear all NVM diagnostic data.
+ *          Erases Flash sector and resets RAM mirror to zero.
+ * @retval  NVM status
+ */
+Svc_Nvm_StatusType Svc_Nvm_ClearAll(void)
+{
+    Svc_Nvm_StatusType retVal = SVC_NVM_OK;
+    EcuAbs_Flash_StatusType flashStatus;
+
+    flashStatus = EcuAbs_Flash_EraseSector(ECUABS_FLASH_NVM_MAIN);
+
+    if (flashStatus != ECUABS_FLASH_OK)
+    {
+        retVal = SVC_NVM_ERROR;
+    }
+    else
+    {
+        (void)memset(&nvmMirror, 0, sizeof(nvmMirror));
     }
 
     return retVal;
@@ -239,6 +287,60 @@ static Svc_Nvm_StatusType Svc_Nvm_WriteBlock(uint8_t sectorId, const Svc_Nvm_Dia
     if (flashStatus != ECUABS_FLASH_OK)
     {
         retVal = SVC_NVM_ERROR;
+    }
+
+    return retVal;
+}
+
+/**
+ * @brief   Validate NVM diagnostic data integrity.
+ *          Checks cycleMarker, fault types, and count values.
+ * @param   pData   Pointer to data to validate
+ * @retval  SVC_NVM_OK if valid, SVC_NVM_ERROR if corrupted
+ */
+static Svc_Nvm_StatusType Svc_Nvm_ValidateData(const Svc_Nvm_DiagDataType *pData)
+{
+    Svc_Nvm_StatusType retVal = SVC_NVM_OK;
+    uint8_t commVal;
+    uint8_t dataVal;
+    uint8_t envVal;
+
+    /* Cycle marker must be 0x00 or 0x80 */
+    if ((pData->cycleMarker != 0x00U) && (pData->cycleMarker != SVC_NVM_CYCLE_MASK))
+    {
+        retVal = SVC_NVM_ERROR;
+    }
+
+    if (retVal == SVC_NVM_OK)
+    {
+        /* Extract result values (strip cycle marker bit) */
+        commVal = pData->commFault & SVC_NVM_FAULT_VALUE_MASK;
+        dataVal = pData->dataFault & SVC_NVM_FAULT_VALUE_MASK;
+        envVal  = pData->envWarning & SVC_NVM_FAULT_VALUE_MASK;
+
+        /* CommFault: only NO_FAULT(0) or FAULT(1) allowed */
+        if ((commVal != SVC_NVM_VALID_NO_FAULT) && (commVal != SVC_NVM_VALID_FAULT))
+        {
+            retVal = SVC_NVM_ERROR;
+        }
+    }
+
+    if (retVal == SVC_NVM_OK)
+    {
+        /* DataFault: only NO_FAULT(0) or FAULT(1) allowed */
+        if ((dataVal != SVC_NVM_VALID_NO_FAULT) && (dataVal != SVC_NVM_VALID_FAULT))
+        {
+            retVal = SVC_NVM_ERROR;
+        }
+    }
+
+    if (retVal == SVC_NVM_OK)
+    {
+        /* EnvWarning: only NO_FAULT(0) or WARNING(2) allowed */
+        if ((envVal != SVC_NVM_VALID_NO_FAULT) && (envVal != SVC_NVM_VALID_WARNING))
+        {
+            retVal = SVC_NVM_ERROR;
+        }
     }
 
     return retVal;

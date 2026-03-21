@@ -84,4 +84,11 @@ Svc_Nvm_StatusType Svc_Nvm_ReadDiagData(Svc_Nvm_DiagDataType *pData);
  */
 Svc_Nvm_StatusType Svc_Nvm_WriteDiagData(const Svc_Nvm_DiagDataType *pData);
 
+/**
+ * @brief   Clear all NVM diagnostic data.
+ *          Erases Flash sector and resets RAM mirror to zero.
+ * @retval  NVM status
+ */
+Svc_Nvm_StatusType Svc_Nvm_ClearAll(void);
+
 #endif /* SVC_NVM_H */
