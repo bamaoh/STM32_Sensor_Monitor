@@ -25,6 +25,7 @@
 #include "EcuAbs_I2c.h"
 #include "Svc_Bme280.h"
 #include "Svc_Led.h"
+#include "Svc_Nvm.h"
 #include "Asw_Sensor.h"
 #include "Asw_Diag.h"
 #include "Asw_Manage.h"
@@ -339,8 +340,9 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 
-  /* BME280 Init test */
+  /* Service Init */
   bme280Status = Svc_Bme280_Init();
+  (void)Svc_Nvm_Init();
 
   /* Infinite loop */
   for(;;)
