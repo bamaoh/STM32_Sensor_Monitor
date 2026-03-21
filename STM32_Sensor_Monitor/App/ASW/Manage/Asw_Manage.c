@@ -47,7 +47,10 @@ static uint8_t prevCommFault  = ASW_MANAGE_NO_FAULT;
 static uint8_t prevDataFault  = ASW_MANAGE_NO_FAULT;
 static uint8_t prevEnvWarning = ASW_MANAGE_NO_FAULT;
 static Svc_Nvm_DiagDataType nvmData;
-static uint8_t nvmLoaded = 0U;
+static uint8_t nvmLoaded      = 0U;
+static uint8_t commSavedCycle = 0U;    /*!< CommFault type already saved this cycle  */
+static uint8_t dataSavedCycle = 0U;    /*!< DataFault type already saved this cycle  */
+static uint8_t envSavedCycle  = 0U;    /*!< EnvWarning type already saved this cycle */
 /*
 ************************************************************************************************************************
 *                                              Private function prototypes
@@ -124,8 +127,9 @@ void Asw_Manage_MainFunction(void)
 
 /**
  * @brief   Update NVM on diagnostic state transition.
- *          On NORMAL -> FAULT/WARNING: store fault type with cycle marker, increment count, write NVM.
- *          On repeated same fault (after recovery): only increment count, write NVM.
+ *          First occurrence in cycle: store fault type with cycle marker + increment count.
+ *          Repeated same fault in cycle: increment count only (fault type already stored).
+ *          Writes to Flash only on NORMAL -> FAULT/WARNING transitions.
  * @param   commFault   Current CommFault result
  * @param   dataFault   Current DataFault result
  * @param   envWarning  Current EnvWarning result
@@ -138,7 +142,13 @@ static void Asw_Manage_UpdateNvm(uint8_t commFault, uint8_t dataFault, uint8_t e
     /* CommFault: NORMAL -> FAULT transition */
     if ((commFault == ASW_MANAGE_FAULT) && (prevCommFault == ASW_MANAGE_NO_FAULT))
     {
-        nvmData.commFault = nvmData.cycleMarker | commFault;
+        if (commSavedCycle == 0U)
+        {
+            /* First occurrence: store fault type with cycle marker */
+            nvmData.commFault = nvmData.cycleMarker | commFault;
+            commSavedCycle = 1U;
+        }
+
         nvmData.commFaultCount++;
         nvmChanged = 1U;
     }
@@ -146,7 +156,12 @@ static void Asw_Manage_UpdateNvm(uint8_t commFault, uint8_t dataFault, uint8_t e
     /* DataFault: NORMAL -> FAULT transition */
     if ((dataFault == ASW_MANAGE_FAULT) && (prevDataFault == ASW_MANAGE_NO_FAULT))
     {
-        nvmData.dataFault = nvmData.cycleMarker | dataFault;
+        if (dataSavedCycle == 0U)
+        {
+            nvmData.dataFault = nvmData.cycleMarker | dataFault;
+            dataSavedCycle = 1U;
+        }
+
         nvmData.dataFaultCount++;
         nvmChanged = 1U;
     }
@@ -154,7 +169,12 @@ static void Asw_Manage_UpdateNvm(uint8_t commFault, uint8_t dataFault, uint8_t e
     /* EnvWarning: NORMAL -> WARNING transition */
     if ((envWarning == ASW_MANAGE_WARNING) && (prevEnvWarning == ASW_MANAGE_NO_FAULT))
     {
-        nvmData.envWarning = nvmData.cycleMarker | envWarning;
+        if (envSavedCycle == 0U)
+        {
+            nvmData.envWarning = nvmData.cycleMarker | envWarning;
+            envSavedCycle = 1U;
+        }
+
         nvmData.envWarningCount++;
         nvmChanged = 1U;
     }
