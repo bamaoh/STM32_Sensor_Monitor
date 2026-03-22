@@ -6,9 +6,10 @@
 * Created         : 2026/03/27
 * Description     : ASW Manage Module Implementation.
 *                   Reads diagnostic results from RTE, controls status LED,
-*                   and manages NVM diagnostic data persistence.
+*                   manages NVM diagnostic data persistence, and outputs
+*                   sensor/diagnostic data via UART serial port.
 *                   NVM is updated only on fault/warning state transitions.
-* Version         : 0.0.2
+* Version         : 0.0.3
 * Author          : Seongmin Oh
 *
 ************************************************************************************************************************
@@ -20,8 +21,10 @@
 */
 #include "Asw_Manage.h"
 #include "RteApp_Diag.h"
+#include "RteApp_Sensor.h"
 #include "Svc_Led.h"
 #include "Svc_Nvm.h"
+#include "Svc_Uart.h"
 /*
 ************************************************************************************************************************
 *                                                   Defines and macros
@@ -67,6 +70,17 @@ static uint8_t envSavedCycle  = 0U;    /*!< EnvWarning type already saved this c
  * @retval  None
  */
 static void Asw_Manage_UpdateNvm(uint8_t commFault, uint8_t dataFault, uint8_t envWarning);
+
+/**
+ * @brief   Output sensor and diagnostic data via UART.
+ *          Always sends sensor data. Additionally sends fault data
+ *          when at least one fault or warning is active.
+ * @param   commFault   Current CommFault result
+ * @param   dataFault   Current DataFault result
+ * @param   envWarning  Current EnvWarning result
+ * @retval  None
+ */
+static void Asw_Manage_OutputUart(uint8_t commFault, uint8_t dataFault, uint8_t envWarning);
 /*
 ************************************************************************************************************************
 *                                                    Public functions
@@ -113,6 +127,9 @@ void Asw_Manage_MainFunction(void)
 
     /* Update NVM on state transitions */
     Asw_Manage_UpdateNvm(commFault, dataFault, envWarning);
+
+    /* UART output: sensor data + fault data (if any) */
+    Asw_Manage_OutputUart(commFault, dataFault, envWarning);
 
     /* Track previous results */
     prevCommFault  = commFault;
@@ -183,5 +200,37 @@ static void Asw_Manage_UpdateNvm(uint8_t commFault, uint8_t dataFault, uint8_t e
     if (nvmChanged == 1U)
     {
         (void)Svc_Nvm_WriteDiagData(&nvmData);
+    }
+}
+
+/**
+ * @brief   Output sensor and diagnostic data via UART.
+ *          Always sends sensor data (temperature, pressure, humidity).
+ *          Additionally sends fault data when at least one fault or warning is active.
+ * @param   commFault   Current CommFault result
+ * @param   dataFault   Current DataFault result
+ * @param   envWarning  Current EnvWarning result
+ * @retval  None
+ */
+static void Asw_Manage_OutputUart(uint8_t commFault, uint8_t dataFault, uint8_t envWarning)
+{
+    int32_t  tempValue  = 0;
+    uint32_t pressValue = 0U;
+    uint32_t humValue   = 0U;
+
+    /* Read filtered sensor data from RTE */
+    (void)RteApp_Sensor_Read_Filtered_Temperature(&tempValue);
+    (void)RteApp_Sensor_Read_Filtered_Pressure(&pressValue);
+    (void)RteApp_Sensor_Read_Filtered_Humidity(&humValue);
+
+    /* Always output sensor data */
+    (void)Svc_Uart_SendSensorData(tempValue, pressValue, humValue);
+
+    /* Output fault data only when fault or warning is active */
+    if ((commFault != ASW_MANAGE_NO_FAULT) ||
+        (dataFault != ASW_MANAGE_NO_FAULT) ||
+        (envWarning != ASW_MANAGE_NO_FAULT))
+    {
+        (void)Svc_Uart_SendDiagData(commFault, dataFault, envWarning);
     }
 }

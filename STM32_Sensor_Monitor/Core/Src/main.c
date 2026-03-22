@@ -26,6 +26,7 @@
 #include "Svc_Bme280.h"
 #include "Svc_Led.h"
 #include "Svc_Nvm.h"
+#include "Svc_Uart.h"
 #include "Asw_Sensor.h"
 #include "Asw_Diag.h"
 #include "Asw_Manage.h"
@@ -343,6 +344,7 @@ void StartDefaultTask(void *argument)
   /* Service Init */
   bme280Status = Svc_Bme280_Init();
   (void)Svc_Nvm_Init();
+  (void)Svc_Uart_Init();
 
   /* Infinite loop */
   for(;;)
