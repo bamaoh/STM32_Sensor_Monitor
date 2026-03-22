@@ -21,7 +21,7 @@
 #include "EcuAbs_I2c.h"
 #include "EcuAbs_Gpio.h"
 #include "RteApp_Bme280.h"
-#include "main.h"
+#include "stm32f4xx_hal.h"
 /*
 ************************************************************************************************************************
 *                                                   Defines and macros
