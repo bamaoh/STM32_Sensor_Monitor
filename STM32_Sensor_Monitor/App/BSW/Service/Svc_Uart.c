@@ -46,6 +46,7 @@
 
 static char txBuffer[SVC_UART_TX_BUF_SIZE];   /*!< Transmit formatting buffer */
 static uint8_t svcUartInitialized = 0U;        /*!< Init completed flag        */
+static uint32_t aliveCounter = 0U;             /*!< Message alive counter      */
 /*
 ************************************************************************************************************************
 *                                              Private function prototypes
@@ -88,24 +89,30 @@ Svc_Uart_StatusType Svc_Uart_Init(void)
 }
 
 /**
- * @brief   Transmit sensor data as formatted string.
- *          Output format: "T:25.31C P:101325Pa H:45.20%\r\n"
+ * @brief   Transmit sensor data as formatted string with alive counter and quality.
+ *          Normal: "[CNT:001 Q:VALID] T:25.31C P:101325Pa H:45.20%\r\n"
+ *          Stale:  "[CNT:002 Q:STALE] T:25.31C P:101325Pa H:45.20%\r\n"
  * @param   temp    Filtered temperature in 0.01 degree C
  * @param   press   Filtered pressure in Pa
  * @param   hum     Filtered humidity in 0.01 %RH
+ * @param   isStale 1U if any fault/warning is active, 0U otherwise
  * @retval  Svc_Uart status
  */
-Svc_Uart_StatusType Svc_Uart_SendSensorData(int32_t temp, uint32_t press, uint32_t hum)
+Svc_Uart_StatusType Svc_Uart_SendSensorData(int32_t temp, uint32_t press, uint32_t hum, uint8_t isStale)
 {
     Svc_Uart_StatusType retVal = SVC_UART_ERROR;
     int32_t tempInt;
     int32_t tempFrac;
     uint32_t humInt;
     uint32_t humFrac;
+    const char *qualityStr;
     int len;
 
     if (svcUartInitialized == 1U)
     {
+        /* Increment alive counter */
+        aliveCounter++;
+
         /* Split temperature into integer and fractional parts */
         tempInt  = temp / SVC_UART_TEMP_SCALE;
         tempFrac = temp % SVC_UART_TEMP_SCALE;
@@ -120,8 +127,13 @@ Svc_Uart_StatusType Svc_Uart_SendSensorData(int32_t temp, uint32_t press, uint32
         humInt  = hum / SVC_UART_HUM_SCALE;
         humFrac = hum % SVC_UART_HUM_SCALE;
 
+        /* Select quality string based on data freshness */
+        qualityStr = (isStale == 1U) ? "STALE" : "VALID";
+
         len = snprintf(txBuffer, SVC_UART_TX_BUF_SIZE,
-                        "T:%ld.%02ldC P:%luPa H:%lu.%02lu%%\r\n",
+                        "[CNT:%03lu Q:%s] T:%ld.%02ldC P:%luPa H:%lu.%02lu%%\r\n",
+                        (unsigned long)(aliveCounter % 1000U),
+                        qualityStr,
                         (long)tempInt, (long)tempFrac,
                         (unsigned long)press,
                         (unsigned long)humInt, (unsigned long)humFrac);
