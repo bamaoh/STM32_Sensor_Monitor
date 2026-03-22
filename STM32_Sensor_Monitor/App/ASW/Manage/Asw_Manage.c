@@ -217,19 +217,26 @@ static void Asw_Manage_OutputUart(uint8_t commFault, uint8_t dataFault, uint8_t 
     int32_t  tempValue  = 0;
     uint32_t pressValue = 0U;
     uint32_t humValue   = 0U;
+    uint8_t  isStale    = 0U;
 
     /* Read filtered sensor data from RTE */
     (void)RteApp_Sensor_Read_Filtered_Temperature(&tempValue);
     (void)RteApp_Sensor_Read_Filtered_Pressure(&pressValue);
     (void)RteApp_Sensor_Read_Filtered_Humidity(&humValue);
 
-    /* Always output sensor data */
-    (void)Svc_Uart_SendSensorData(tempValue, pressValue, humValue);
-
-    /* Output fault data only when fault or warning is active */
+    /* Determine if sensor data is stale (any fault or warning active) */
     if ((commFault != ASW_MANAGE_NO_FAULT) ||
         (dataFault != ASW_MANAGE_NO_FAULT) ||
         (envWarning != ASW_MANAGE_NO_FAULT))
+    {
+        isStale = 1U;
+    }
+
+    /* Output sensor data with alive counter and quality indicator */
+    (void)Svc_Uart_SendSensorData(tempValue, pressValue, humValue, isStale);
+
+    /* Output fault data only when fault or warning is active */
+    if (isStale == 1U)
     {
         (void)Svc_Uart_SendDiagData(commFault, dataFault, envWarning);
     }

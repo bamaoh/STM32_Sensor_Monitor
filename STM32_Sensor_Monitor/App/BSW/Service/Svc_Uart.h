@@ -55,14 +55,16 @@ typedef enum
 Svc_Uart_StatusType Svc_Uart_Init(void);
 
 /**
- * @brief   Transmit sensor data as formatted string.
- *          Output format: "T:25.31C P:101325Pa H:45.20%\r\n"
+ * @brief   Transmit sensor data as formatted string with alive counter and quality.
+ *          Normal: "[CNT:001 Q:VALID] T:25.31C P:101325Pa H:45.20%\r\n"
+ *          Stale:  "[CNT:002 Q:STALE] T:25.31C P:101325Pa H:45.20%\r\n"
  * @param   temp    Filtered temperature in 0.01 degree C (e.g. 2531 = 25.31C)
  * @param   press   Filtered pressure in Pa
  * @param   hum     Filtered humidity in 0.01 %RH (e.g. 4520 = 45.20%)
+ * @param   isStale 1U if any fault/warning is active (last valid value), 0U otherwise
  * @retval  Svc_Uart status
  */
-Svc_Uart_StatusType Svc_Uart_SendSensorData(int32_t temp, uint32_t press, uint32_t hum);
+Svc_Uart_StatusType Svc_Uart_SendSensorData(int32_t temp, uint32_t press, uint32_t hum, uint8_t isStale);
 
 /**
  * @brief   Transmit diagnostic fault data as formatted string.
