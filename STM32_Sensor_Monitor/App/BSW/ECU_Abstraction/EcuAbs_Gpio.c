@@ -18,7 +18,7 @@
 ************************************************************************************************************************
 */
 #include "EcuAbs_Gpio.h"
-#include "main.h"
+#include "stm32f4xx_hal.h"
 /*
 ************************************************************************************************************************
 *                                                   Defines and macros
@@ -28,8 +28,8 @@
 #define ECUABS_GPIO_SCL_PORT    (GPIOB)         /*!< I2C1 SCL port (PB8)       */
 #define ECUABS_GPIO_SCL_PIN     (GPIO_PIN_8)    /*!< I2C1 SCL pin              */
 #define ECUABS_GPIO_TOGGLE_DELAY_US (5U)        /*!< Half-period delay for SCL toggle  */
-#define ECUABS_GPIO_LED_PORT    (LD2_GPIO_Port) /*!< LD2 port (PA5)            */
-#define ECUABS_GPIO_LED_PIN     (LD2_Pin)       /*!< LD2 pin                   */
+#define ECUABS_GPIO_LED_PORT    (GPIOA)         /*!< LD2 port (PA5)            */
+#define ECUABS_GPIO_LED_PIN     (GPIO_PIN_5)    /*!< LD2 pin                   */
 /*
 ************************************************************************************************************************
 *                                                         Typedefs
