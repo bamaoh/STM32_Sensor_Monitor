@@ -18,7 +18,7 @@
 ************************************************************************************************************************
 */
 #include "EcuAbs_Flash.h"
-#include "main.h"
+#include "stm32f4xx_hal.h"
 #include <string.h>
 /*
 ************************************************************************************************************************
@@ -54,7 +54,7 @@
  * @param   pAddr       Pointer to store physical base address
  * @retval  EcuAbs Flash status
  */
-static EcuAbs_Flash_StatusType Svc_Nvm_GetSectorAddr(uint8_t sectorId, uint32_t *pAddr);
+static EcuAbs_Flash_StatusType EcuAbs_Flash_GetSectorAddr(uint8_t sectorId, uint32_t *pAddr);
 
 /**
  * @brief   Convert logical sector ID to physical sector number.
@@ -62,7 +62,7 @@ static EcuAbs_Flash_StatusType Svc_Nvm_GetSectorAddr(uint8_t sectorId, uint32_t 
  * @param   pSector     Pointer to store physical sector number
  * @retval  EcuAbs Flash status
  */
-static EcuAbs_Flash_StatusType Svc_Nvm_GetSectorNum(uint8_t sectorId, uint32_t *pSector);
+static EcuAbs_Flash_StatusType EcuAbs_Flash_GetSectorNum(uint8_t sectorId, uint32_t *pSector);
 /*
 ************************************************************************************************************************
 *                                                    Public functions
@@ -82,7 +82,7 @@ EcuAbs_Flash_StatusType EcuAbs_Flash_Read(uint8_t sectorId, uint32_t offset, uin
     EcuAbs_Flash_StatusType retVal = ECUABS_FLASH_OK;
     uint32_t baseAddr = 0U;
 
-    retVal = Svc_Nvm_GetSectorAddr(sectorId, &baseAddr);
+    retVal = EcuAbs_Flash_GetSectorAddr(sectorId, &baseAddr);
 
     if (retVal == ECUABS_FLASH_OK)
     {
@@ -117,7 +117,7 @@ EcuAbs_Flash_StatusType EcuAbs_Flash_Write(uint8_t sectorId, uint32_t offset, co
     uint32_t remaining;
     HAL_StatusTypeDef halStatus = HAL_OK;
 
-    retVal = Svc_Nvm_GetSectorAddr(sectorId, &baseAddr);
+    retVal = EcuAbs_Flash_GetSectorAddr(sectorId, &baseAddr);
 
     if (retVal == ECUABS_FLASH_OK)
     {
@@ -181,7 +181,7 @@ EcuAbs_Flash_StatusType EcuAbs_Flash_EraseSector(uint8_t sectorId)
     FLASH_EraseInitTypeDef eraseInit;
     HAL_StatusTypeDef halStatus;
 
-    retVal = Svc_Nvm_GetSectorNum(sectorId, &sectorNum);
+    retVal = EcuAbs_Flash_GetSectorNum(sectorId, &sectorNum);
 
     if (retVal == ECUABS_FLASH_OK)
     {
@@ -216,7 +216,7 @@ EcuAbs_Flash_StatusType EcuAbs_Flash_EraseSector(uint8_t sectorId)
  * @param   pAddr       Pointer to store physical base address
  * @retval  EcuAbs Flash status
  */
-static EcuAbs_Flash_StatusType Svc_Nvm_GetSectorAddr(uint8_t sectorId, uint32_t *pAddr)
+static EcuAbs_Flash_StatusType EcuAbs_Flash_GetSectorAddr(uint8_t sectorId, uint32_t *pAddr)
 {
     EcuAbs_Flash_StatusType retVal = ECUABS_FLASH_OK;
 
@@ -242,7 +242,7 @@ static EcuAbs_Flash_StatusType Svc_Nvm_GetSectorAddr(uint8_t sectorId, uint32_t 
  * @param   pSector     Pointer to store physical sector number
  * @retval  EcuAbs Flash status
  */
-static EcuAbs_Flash_StatusType Svc_Nvm_GetSectorNum(uint8_t sectorId, uint32_t *pSector)
+static EcuAbs_Flash_StatusType EcuAbs_Flash_GetSectorNum(uint8_t sectorId, uint32_t *pSector)
 {
     EcuAbs_Flash_StatusType retVal = ECUABS_FLASH_OK;
 
