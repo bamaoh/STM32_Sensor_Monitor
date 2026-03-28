@@ -17,10 +17,7 @@
 ************************************************************************************************************************
 */
 #include "Svc_Bme280.hpp"
-extern "C"
-{
-    #include "RteApp_Bme280.h"
-}
+#include "RteApp_Bme280.hpp"
 /*
 ************************************************************************************************************************
 *                                                   Defines and macros
@@ -217,13 +214,13 @@ SvcBme280::Status SvcBme280::readMeasurement(MeasData *pData)
         pData->humidity    = (compensateHum(adcH) * 100U) >> 10U;
 
         /* Write compensated data to RTE buffer */
-        (void)RteApp_Bme280_Write_Temperature(pData->temperature);
-        (void)RteApp_Bme280_Write_Pressure(pData->pressure);
-        (void)RteApp_Bme280_Write_Humidity(pData->humidity);
+        (void)RteAppBme280::writeTemperature(pData->temperature);
+        (void)RteAppBme280::writePressure(pData->pressure);
+        (void)RteAppBme280::writeHumidity(pData->humidity);
     }
 
     /* Write communication status to RTE (0: OK, 1: Error) */
-    (void)RteApp_Bme280_Write_CommStatus((retVal == Status::Comm_Error) ? 1U : 0U);
+    (void)RteAppBme280::writeCommStatus((retVal == Status::Comm_Error) ? 1U : 0U);
 
     return retVal;
 }
