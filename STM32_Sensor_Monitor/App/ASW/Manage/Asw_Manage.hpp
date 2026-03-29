@@ -43,8 +43,16 @@ public:
 */
 
     /**
+     * @brief   Initialize managed services (NVM, UART).
+     *          Must be called once before mainFunction.
+     * @retval  None
+     */
+    void init(void);
+
+    /**
      * @brief   Periodic manage processing.
-     *          Reads diagnostic results from RTE and controls status LED.
+     *          Reads diagnostic results from RTE, controls status LED,
+     *          updates NVM, outputs UART, and executes LED action.
      * @retval  None
      */
     void mainFunction(void);
