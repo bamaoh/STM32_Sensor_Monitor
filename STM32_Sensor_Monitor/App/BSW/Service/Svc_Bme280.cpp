@@ -78,8 +78,19 @@ SvcBme280::Status SvcBme280::init(void)
     EcuAbsI2c::Status i2cStatus;
     uint8_t chipId = 0x00U;
 
+    /* Initialize I2C driver */
+    i2cStatus = i2c_.init();
+
+    if (i2cStatus != EcuAbsI2c::Status::Ok)
+    {
+        retVal = Status::Comm_Error;
+    }
+
     /* Check device presence on I2C bus */
-    i2cStatus = i2c_.isDeviceReady(DEV_ADDR);
+    if (retVal == Status::Ok)
+    {
+        i2cStatus = i2c_.isDeviceReady(DEV_ADDR);
+    }
 
     if (i2cStatus != EcuAbsI2c::Status::Ok)
     {
