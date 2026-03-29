@@ -40,9 +40,20 @@ namespace
 */
 
 /**
+ * @brief   Initialize managed services (NVM, UART).
+ *          Must be called once before mainFunction.
+ * @retval  None
+ */
+void AswManage::init(void)
+{
+    (void)nvm_.init();
+    (void)uart_.init();
+}
+
+/**
  * @brief   Periodic manage processing.
  *          Reads diagnostic results from RTE, controls status LED,
- *          and updates NVM on state transitions.
+ *          updates NVM on state transitions, and executes LED action.
  * @retval  None
  */
 void AswManage::mainFunction(void)
@@ -87,6 +98,9 @@ void AswManage::mainFunction(void)
     prevCommFault_  = commFault;
     prevDataFault_  = dataFault;
     prevEnvWarning_ = envWarning;
+
+    /* Execute LED action based on current mode */
+    led_.mainFunction();
 }
 /*
 ************************************************************************************************************************
