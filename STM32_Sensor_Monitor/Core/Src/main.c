@@ -22,14 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "EcuAbs_I2c.h"
-#include "Svc_Bme280.h"
-#include "Svc_Led.h"
-#include "Svc_Nvm.h"
-#include "Svc_Uart.h"
-#include "Asw_Sensor.h"
-#include "Asw_Diag.h"
-#include "Asw_Manage.h"
+#include "app_bridge.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,6 +53,30 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
+
+/* Task handles */
+osThreadId_t sensorTaskHandle;
+osThreadId_t diagTaskHandle;
+osThreadId_t manageTaskHandle;
+
+/* Task attributes */
+const osThreadAttr_t sensorTask_attributes = {
+  .name = "sensorTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+
+const osThreadAttr_t diagTask_attributes = {
+  .name = "diagTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal,
+};
+
+const osThreadAttr_t manageTask_attributes = {
+  .name = "manageTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 
 /* USER CODE END PV */
 
@@ -111,14 +128,15 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  EcuAbs_I2c_Init();
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+  /* Mutex and Event Flags created inside App_Init() */
+  App_Init();
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
@@ -138,7 +156,9 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  sensorTaskHandle = osThreadNew(App_SensorTask, NULL, &sensorTask_attributes);
+  diagTaskHandle   = osThreadNew(App_DiagTask,   NULL, &diagTask_attributes);
+  manageTaskHandle = osThreadNew(App_ManageTask, NULL, &manageTask_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -335,26 +355,15 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-Svc_Bme280_StatusType bme280Status;
-Svc_Bme280_DataType sensorData;
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 
-  /* Service Init */
-  bme280Status = Svc_Bme280_Init();
-  (void)Svc_Nvm_Init();
-  (void)Svc_Uart_Init();
-
-  /* Infinite loop */
+  /* Application tasks are handled by App_SensorTask, App_DiagTask, App_ManageTask.
+   * This default task is kept for CubeIDE compatibility but remains idle. */
   for(;;)
   {
-    bme280Status = Svc_Bme280_ReadMeasurement(&sensorData);
-    Asw_Sensor_MainFunction();
-    Asw_Diag_MainFunction();
-    Asw_Manage_MainFunction();
-    Svc_Led_MainFunction();
-    osDelay(1000);
+    osDelay(10000);
   }
   /* USER CODE END 5 */
 }
